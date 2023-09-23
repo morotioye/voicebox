@@ -47,14 +47,14 @@ class Voicebox:
                 await interaction.response.send_message("Sorry, you do not have the perms for this.")  # Error message
 
         @self.bot.command(description="Connect to voice channel.")
-        async def connect(ctx):
+        async def connect(interaction):
             # Check if the user is in a voice channel
-            if ctx.author.voice and ctx.author.voice.channel:
-                channel = ctx.author.voice.channel
+            if interaction.author.voice and interaction.author.voice.channel:
+                channel = interaction.author.voice.channel
                 self.vc = await channel.connect()
-                await ctx.send("Joined the voice channel.")
+                await interaction.response.send_message("Joined the voice channel.")
             else:
-                await ctx.send("You are not connected to a voice channel.")
+                await interaction.response.send_message("You are not connected to a voice channel.")
 
         
         @self.bot.slash_command(description="Disconnect from voice channel.")
@@ -110,7 +110,7 @@ class Voicebox:
         
         @self.bot.event
         async def on_voice_state_update(member, before, after):
-            if self.transcribing or self.conversing:# Ignore if the member is the bot itself
+            if self.transcribing:# Ignore if the member is the bot itself
                 if member == self.bot.user:
                     return
 
@@ -121,10 +121,9 @@ class Voicebox:
                 # Get the user's thread data to find the corresponding text channel
                 thread_data = self.monitor.get_thread(member.id)
                 if not thread_data:
-                    return
+                    return ## this needs to be changed 
 
-                text_channel_id = thread_data[1]
-                text_channel = self.bot.get_channel(text_channel_id)
+                text_channel = self.bot.get_channel(1155234975294165053)
 
                 # Check if the user muted or unmuted themselves and send a message accordingly
                 if after.self_mute:  # If the user muted themselves
