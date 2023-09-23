@@ -12,6 +12,7 @@ class Voicebox:
     def __init__(self, token):
         self.voice_connections = {}
         self.conversations = {}
+        self.token = token
         self.vc = None
         self.client = speech.SpeechClient.from_service_account_json('key.json')
         self.transcribing = False
@@ -45,11 +46,16 @@ class Voicebox:
             else:  # If user is not an admin
                 await interaction.response.send_message("Sorry, you do not have the perms for this.")  # Error message
 
-        @self.bot.command(description="Join voice channel.")
-        async def join(interaction):
-            user_id = interaction.user.id
-            self.vc = await self.voice_channel.connect()
-            await interaction.response.send_message("Joined the voice channel.")
+        @self.bot.command(description="Connect to voice channel.")
+        async def connect(ctx):
+            # Check if the user is in a voice channel
+            if ctx.author.voice and ctx.author.voice.channel:
+                channel = ctx.author.voice.channel
+                self.vc = await channel.connect()
+                await ctx.send("Joined the voice channel.")
+            else:
+                await ctx.send("You are not connected to a voice channel.")
+
         
         @self.bot.slash_command(description="Disconnect from voice channel.")
         async def disconnect(interaction):
@@ -289,6 +295,6 @@ class Voicebox:
 
 
     def start(self):
-        self.bot.run(self.monitor.bot_token)
+        self.bot.run(self.token)
         logging.info("Bot started running")
  #
