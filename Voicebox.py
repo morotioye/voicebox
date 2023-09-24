@@ -2,11 +2,12 @@ import io
 import logging
 import pydub  # pip install pydub
 import discord
+from discord.ext import commands
 from discord.sinks import MP3Sink
-from datetime import datetime, timezone
+import tempfile  # Add this import
+import os
 import asyncio
 from google.cloud import speech, texttospeech
-import openai
 
 class Voicebox:
     def __init__(self, token):
@@ -22,6 +23,46 @@ class Voicebox:
         self.bot = discord.Bot(command_prefix='!', intents=discord.Intents.all())
         self.token = token
         logging.info('Controller initialized')
+
+        @self.bot.command(description = "get the bot to speaks")
+        async def respond(self, message: str):
+            # Initialize the Text-to-Speech client
+            tts_client = texttospeech.TextToSpeechClient.from_service_account_json('key.json')
+
+            # Set the text input and audio configuration
+            synthesis_input = texttospeech.SynthesisInput(text=message)
+            voice = texttospeech.VoiceSelectionParams(
+                language_code="en-US",
+                name="en-US-Wavenet-D",  # You can change this voice if needed
+                ssml_gender=texttospeech.SsmlVoiceGender.NEUTRAL
+            )
+            audio_config = texttospeech.AudioConfig(
+                audio_encoding=texttospeech.AudioEncoding.LINEAR16,
+            )
+
+            # Generate the speech audio
+            try:
+                response = tts_client.synthesize_speech(
+                    input=synthesis_input,
+                    voice=voice,
+                    audio_config=audio_config
+                )
+
+                # Create a temporary WAV file to store the audio
+                with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_audio:
+                    temp_audio.write(response.audio_content)
+                    temp_audio_path = temp_audio.name
+
+                # Play the audio in the voice channel
+                if self.vc:
+                    self.vc.play(discord.FFmpegPCMAudio(executable="ffmpeg", source=temp_audio_path))
+                    logging.info("okay")
+            except Exception as e:
+                print(e)
+
+            finally:
+                # Clean up the temporary audio file
+                os.remove(temp_audio_path)           
         
         @self.bot.event
         async def on_ready():
@@ -269,4 +310,4 @@ class Voicebox:
     def start(self):
         self.bot.run(self.token)
         logging.info("Bot started running")
- #
+ 
