@@ -6,6 +6,7 @@ from discord.ext import commands
 from discord.sinks import MP3Sink
 import tempfile  # Add this import
 import os
+from ATS import ATS
 import asyncio
 from google.cloud import speech, texttospeech
 
@@ -16,6 +17,7 @@ class Voicebox:
         self.token = token
         self.voice_status = False
         self.vc = None
+        self.ats = ATS()
         self.client = speech.SpeechClient.from_service_account_json('key.json')
         self.transcribing = False
         self.conversing = False
@@ -71,7 +73,9 @@ class Voicebox:
                 self.vc.play(discord.FFmpegPCMAudio(executable="ffmpeg", source="output.wav"))
                 logging.info("it worked")
 
-
+        @self.bot.command(description="Recognize ASL and speak it.")
+        async def recognize(interaction):
+            self.ats.start()
 
         @self.bot.command(description="Clear channel of messages.")
         async def clear(interaction):
