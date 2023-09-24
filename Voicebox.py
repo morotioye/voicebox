@@ -24,46 +24,6 @@ class Voicebox:
         self.token = token
         logging.info('Controller initialized')
 
-        @self.bot.command(description = "get the bot to speaks")
-        async def respond(self, message: str):
-            # Initialize the Text-to-Speech client
-            tts_client = texttospeech.TextToSpeechClient.from_service_account_json('key.json')
-
-            # Set the text input and audio configuration
-            synthesis_input = texttospeech.SynthesisInput(text=message)
-            voice = texttospeech.VoiceSelectionParams(
-                language_code="en-US",
-                name="en-US-Wavenet-D",  # You can change this voice if needed
-                ssml_gender=texttospeech.SsmlVoiceGender.NEUTRAL
-            )
-            audio_config = texttospeech.AudioConfig(
-                audio_encoding=texttospeech.AudioEncoding.LINEAR16,
-            )
-
-            # Generate the speech audio
-            try:
-                response = tts_client.synthesize_speech(
-                    input=synthesis_input,
-                    voice=voice,
-                    audio_config=audio_config
-                )
-
-                # Create a temporary WAV file to store the audio
-                with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_audio:
-                    temp_audio.write(response.audio_content)
-                    temp_audio_path = temp_audio.name
-
-                # Play the audio in the voice channel
-                if self.vc:
-                    self.vc.play(discord.FFmpegPCMAudio(executable="ffmpeg", source=temp_audio_path))
-                    logging.info("okay")
-            except Exception as e:
-                print(e)
-
-            finally:
-                # Clean up the temporary audio file
-                os.remove(temp_audio_path)           
-        
         @self.bot.event
         async def on_ready():
             print(f"Logged in as {self.bot.user}")
@@ -71,7 +31,47 @@ class Voicebox:
 
         @self.bot.command(description="Check status")
         async def status(ctx):
-            await ctx.channel.send("Ready.")
+            await ctx.channel.send("Voicebox ready.")
+
+        @self.bot.command(description="Speak text into a voice channel.")
+        async def speak(interaction, message: str):
+            if not discord.opus.is_loaded():
+                discord.opus.load_opus('/opt/homebrew/Cellar/opus/1.4/lib/libopus.0.dylib')
+            
+            await interaction.response.send_message(message)
+            # init client
+            self.tts_client = texttospeech.TextToSpeechClient.from_service_account_json('key.json')
+            synthesis_input = texttospeech.SynthesisInput(text=message)
+            voice = texttospeech.VoiceSelectionParams(
+                language_code="en-AU",
+                name="en-AU-Wavenet-C",
+            )
+            audio_config = texttospeech.AudioConfig(
+                audio_encoding=texttospeech.AudioEncoding.LINEAR16,
+                effects_profile_id=["small-bluetooth-speaker-class-device"],
+                pitch=0,
+                speaking_rate=1
+            )
+
+            try:
+                audio_response = self.tts_client.synthesize_speech(
+                    input=synthesis_input,
+                    voice=voice,
+                    audio_config=audio_config
+                )
+            except Exception as e:
+                print(e)
+            
+            # Save the audio to a file
+            with open("output.wav", "wb") as out:
+                out.write(audio_response.audio_content)
+
+            # Play the audio in the voice channel
+            if self.vc:  # Assuming self.vc is your VoiceClient instance
+                self.vc.play(discord.FFmpegPCMAudio(executable="ffmpeg", source="output.wav"))
+                logging.info("it worked")
+
+
 
         @self.bot.command(description="Clear channel of messages.")
         async def clear(interaction):
@@ -98,7 +98,6 @@ class Voicebox:
             else:
                 await interaction.response.send_message("You are not connected to a voice channel.")
 
-        
         @self.bot.slash_command(description="Disconnect from voice channel.")
         async def disconnect(interaction):
             await self.vc.disconnect()
@@ -125,27 +124,6 @@ class Voicebox:
             else:
                 await ctx.respond("I wasn't transcribing.")
         
-                
-
-        @self.bot.command(description="Begin a conversation with bot.")
-        async def converse(interaction):
-            # Method to converse with GPT
-            self.conversing = True
-            await interaction.response.send_message("Conversation started! Unmute to begin talking.")
-
-        @self.bot.command(description="Stop the current voice response.")
-        async def stopaudio(ctx):
-            """Stop the currently playing audio in the voice channel."""
-            vc: discord.VoiceClient = ctx.voice_client
-
-            if not vc or not vc.is_playing():
-                await ctx.send("There is no audio currently playing.")
-                logging.info("No audio is playing right now.")
-            else:
-                vc.stop()
-                await ctx.respond("Stopped the audio playback.")
-                logging.info("Audio playback stopped.")
-        
         @self.bot.event
         async def on_voice_state_update(member, before, after):
             if self.transcribing:# Ignore if the member is the bot itself
@@ -168,7 +146,6 @@ class Voicebox:
                     logging.info(f"{member.name} UNMUTED BY {member.name}")
                     await self.start_recording(member, text_channel)
 
-
     async def start_recording(self, member, text_channel):
         if self.voice_status:
             return  # Already recording
@@ -183,7 +160,7 @@ class Voicebox:
 
         if not discord.opus.is_loaded():
             discord.opus.load_opus('/opt/homebrew/Cellar/opus/1.4/lib/libopus.0.dylib')
-            logging.info("OPUS NOT REQUIRED")
+
 
         # Start recording and pass the finished_callback with the text_channel
         vc.start_recording(
@@ -210,52 +187,6 @@ class Voicebox:
         vc.stop_recording()
         self.voice_status = False
         logging.info(f"Stopped recording for member {member.id}")
-
-    async def respond(self, transcription_text: str, user_id: int):
-        """Converts the transcription text to speech and plays it in the voice channel."""
-        pass
-        
-
-        # # Add the assistant's response to the conversation history
-        # self.conversations[user_id].append({"role": "assistant", "content": response})
-
-        # # Initialize the Text-to-Speech client
-        # self.tts_client = texttospeech.TextToSpeechClient.from_service_account_json('key.json')
-
-        # # Set the text input and audio configuration
-        # synthesis_input = texttospeech.SynthesisInput(text=response)
-        # voice = texttospeech.VoiceSelectionParams(
-        #     language_code="en-AU",
-        #     name="en-AU-Wavenet-C",
-        #     # ssml_gender=texttospeech.SsmlVoiceGender.NEUTRAL
-        # )
-        # audio_config = texttospeech.AudioConfig(
-        #     audio_encoding=texttospeech.AudioEncoding.LINEAR16,
-        #     effects_profile_id=["small-bluetooth-speaker-class-device"],
-        #     pitch=0,
-        #     speaking_rate=1
-        # )
-
-        # Generate the speech audio
-        # try:
-        #     audio_response = self.tts_client.synthesize_speech(
-        #         input=synthesis_input,
-        #         voice=voice,
-        #         audio_config=audio_config
-        #     )
-            
-        #     logging.info("RESPONSE AUDIO GENERATED")
-        # except Exception as e:
-        #     print(e)
-        
-        # # Save the audio to a file
-        # with open("output.wav", "wb") as out:
-        #     out.write(audio_response.audio_content)
-
-        # # Play the audio in the voice channel
-        # if self.vc:  # Assuming self.vc is your VoiceClient instance
-        #     self.vc.play(discord.FFmpegPCMAudio(executable="ffmpeg", source="output.wav"))
-        #     logging.info(f"Responded to user {user_id} with message: f{response}")
                 
     # Finish callback for /converse
     async def finished_callback(self, sink: MP3Sink, channel: discord.TextChannel):
@@ -301,11 +232,6 @@ class Voicebox:
 
         # Send the transcription to the Discord channel
         await channel.send(transcription)
-
-        # Respond to the last transcription
-        await self.respond(transcription, user_id) # TODO -- change this for splitting transcription & conversing
-        logging.info("Transcription logged")
-
 
     def start(self):
         self.bot.run(self.token)
