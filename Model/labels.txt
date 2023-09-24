@@ -1,0 +1,8 @@
+hello
+bye
+good
+what's your name
+my name is
+thank you
+logan
+finish

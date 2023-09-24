@@ -75,7 +75,54 @@ class Voicebox:
 
         @self.bot.command(description="Recognize ASL and speak it.")
         async def recognize(interaction):
+            await interaction.response.send_message("before")
             self.ats.start()
+            reply_mess = ""
+            arr = self.ats.message_array
+            temp_string = ""
+            for i in range(len(arr)):
+                if arr[i] != temp_string:
+                    temp_string = arr[i]
+                    reply_mess += arr[i]
+
+            reply_mess += "."
+            await interaction.channel.send(reply_mess)
+
+            if not discord.opus.is_loaded():
+                discord.opus.load_opus('/opt/homebrew/Cellar/opus/1.4/lib/libopus.0.dylib')
+            # init client
+            self.tts_client = texttospeech.TextToSpeechClient.from_service_account_json('key.json')
+            synthesis_input = texttospeech.SynthesisInput(text=reply_mess)
+            voice = texttospeech.VoiceSelectionParams(
+                language_code="en-AU",
+                name="en-AU-Wavenet-C",
+            )
+            audio_config = texttospeech.AudioConfig(
+                audio_encoding=texttospeech.AudioEncoding.LINEAR16,
+                effects_profile_id=["small-bluetooth-speaker-class-device"],
+                pitch=0,
+                speaking_rate=1
+            )
+
+            try:
+                audio_response = self.tts_client.synthesize_speech(
+                    input=synthesis_input,
+                    voice=voice,
+                    audio_config=audio_config
+                )
+            except Exception as e:
+                print(e)
+            
+            # Save the audio to a file
+            with open("output.wav", "wb") as out:
+                out.write(audio_response.audio_content)
+
+            # Play the audio in the voice channel
+            if self.vc:  # Assuming self.vc is your VoiceClient instance
+                self.vc.play(discord.FFmpegPCMAudio(executable="ffmpeg", source="output.wav"))
+                logging.info("it worked")
+            
+            
 
         @self.bot.command(description="Clear channel of messages.")
         async def clear(interaction):
@@ -238,4 +285,22 @@ class Voicebox:
     def start(self):
         self.bot.run(self.token)
         logging.info("Bot started running")
- 
+
+    def daddy(self, arr):
+        if not arr or len(arr) < 2:
+            return arr
+        
+        result = []
+        i = 0
+        while i < len(arr) - 1:
+            if arr[i] == arr[i + 1]:
+                i += 2  # skip the next element
+            else:
+                result.append(arr[i])
+                i += 1
+        
+        # Handle the last element if it's not part of a duplicate pair
+        if i == len(arr) - 1:
+            result.append(arr[i])
+        
+        return result
