@@ -138,11 +138,9 @@ class Voicebox:
 
                 # Check if the user muted or unmuted themselves and send a message accordingly
                 if after.self_mute:  # If the user muted themselves
-                    await text_channel.send(f"{member.name} muted themselves.")
                     logging.info(f"{member.name} MUTED BY {member.name}")
                     await self.stop_recording(member)
                 else:  # If the user unmuted themselves
-                    await text_channel.send(f"{member.name} unmuted themselves.")
                     logging.info(f"{member.name} UNMUTED BY {member.name}")
                     await self.start_recording(member, text_channel)
 
@@ -231,8 +229,8 @@ class Voicebox:
         transcription = ''.join([result.alternatives[0].transcript for result in response.results])
 
         # Send the transcription to the Discord channel
-        await channel.send(transcription)
-
+        user = await self.bot.fetch_user(user_id)
+        await channel.send(f"**{user.name}: **" + transcription) # should have use
     def start(self):
         self.bot.run(self.token)
         logging.info("Bot started running")
