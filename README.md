@@ -17,7 +17,7 @@ voice transcription, text to speech, and sign-language to speech.
 - Multi-user voice Sink support.
 
 ## Demo
-https://youtu.be/H8yfZcOSChI
+[![Watch the video](https://i.stack.imgur.com/Vp2cE.png)](https://youtu.be/H8yfZcOSChI)
 
 ## Creators
 - Logan Montgomery
